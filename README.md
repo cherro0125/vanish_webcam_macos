@@ -18,6 +18,8 @@ The published EXE may predate the Particles and Goku modes. To use them now, run
 
 The app runs on macOS (Apple Silicon and Intel) from the Python sources. There is no prebuilt app.
 
+If you manage Python with [mise](https://mise.jdx.dev/), follow the full step-by-step guide in [English](MACOS_MISE_EN.md) or [Polish](MACOS_MISE_PL.md). The steps below use the bundled launcher instead.
+
 1. Install Python from [python.org](https://www.python.org/downloads/macos/) or with `brew install python@3.12`. Apple Silicon Macs need Python 3.9–3.13, and Intel Macs need 3.9–3.12, because MediaPipe publishes no newer builds for them.
 2. Double-click `AVVIA_LOCALE.command` in Finder, or run `./AVVIA_LOCALE.command` in Terminal. On the first run it creates `.venv-local` and installs the dependencies. You need an internet connection for that.
 3. macOS asks for camera access on the first run. Allow it. If you dismissed the prompt, open **System Settings → Privacy & Security → Camera**, enable the app you launch from (Terminal, iTerm, VS Code…), and restart that app.
