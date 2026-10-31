@@ -14,9 +14,31 @@ If you like this project and want to support it, you can buy me a coffee through
 
 The published EXE may predate the Particles and Goku modes. To use them now, run the local scripts or rebuild the EXE from these sources.
 
+## macOS
+
+The app runs on macOS (Apple Silicon and Intel) from the Python sources. There is no prebuilt app.
+
+1. Install Python from [python.org](https://www.python.org/downloads/macos/) or with `brew install python@3.12`. Apple Silicon Macs need Python 3.9–3.13, and Intel Macs need 3.9–3.12, because MediaPipe publishes no newer builds for them.
+2. Double-click `AVVIA_LOCALE.command` in Finder, or run `./AVVIA_LOCALE.command` in Terminal. On the first run it creates `.venv-local` and installs the dependencies. You need an internet connection for that.
+3. macOS asks for camera access on the first run. Allow it. If you dismissed the prompt, open **System Settings → Privacy & Security → Camera**, enable the app you launch from (Terminal, iTerm, VS Code…), and restart that app.
+
+If Finder says the script comes from an unidentified developer, right-click it and choose **Open**, or run `xattr -d com.apple.quarantine *.command` in the project folder. If double-clicking does nothing, run `chmod +x *.command`.
+
+`AVVIA_VIRTUAL.command` and `AVVIA_OBS.command` work like their Windows `.bat` counterparts, and all of them accept the same options:
+
+```bash
+./AVVIA_LOCALE.command --mode naruto --camera 1 --width 1280 --height 720
+```
+
+**Virtual camera on macOS:** pyvirtualcam supports only the OBS virtual camera on macOS. Install [OBS Studio](https://obsproject.com/) 30 or later. Open it once, click **Start Virtual Camera**, and approve the system extension in System Settings when prompted. Then stop the virtual camera and quit OBS. VanishCam sends its output to **OBS Virtual Camera** while OBS is closed. Unity Capture is Windows-only.
+
+Without OBS, use `AVVIA_OBS.command` (preview window only) and share the **Webcam - Anteprima** window in Zoom, Meet, or Teams.
+
+If `pygame` is not installed, the Naruto sound falls back to `ffplay` or to the built-in macOS `afplay`.
+
 ## Getting started
 
-1. Double-click `AVVIA_LOCALE.bat`.
+1. Double-click `AVVIA_LOCALE.bat` (Windows) or `AVVIA_LOCALE.command` (macOS).
 2. In the start menu, choose **Normal Vanish**, **Naruto Vanish**, **Particles**, or **Goku** with the mouse or the `1`, `2`, `3`, and `4` keys.
 3. Step out of the camera frame for 4 seconds while the background is captured. The terminal tells you when you can step back in.
 
