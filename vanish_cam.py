@@ -138,6 +138,9 @@ def choose_mode() -> str | None:
 
     cv2.namedWindow(title, cv2.WINDOW_AUTOSIZE)
     cv2.setMouseCallback(title, on_mouse)
+    # macOS (Cocoa) may report the window as not visible until it is drawn,
+    # so only treat "not visible" as closed after it was seen on screen.
+    seen_visible = False
     try:
         while selected[0] is None:
             cv2.imshow(title, window)
@@ -148,11 +151,30 @@ def choose_mode() -> str | None:
                 selected[0] = "naruto"
             elif key in (ord("q"), 27):
                 return None
-            if cv2.getWindowProperty(title, cv2.WND_PROP_VISIBLE) < 1:
+            visible = cv2.getWindowProperty(title, cv2.WND_PROP_VISIBLE) >= 1
+            if visible:
+                seen_visible = True
+            elif seen_visible:
                 return None
         return selected[0]
     finally:
         cv2.destroyWindow(title)
+
+
+def virtual_camera_help() -> str:
+    if platform.system() == "Darwin":
+        return (
+            "Webcam virtuale non disponibile. Su macOS serve OBS Studio 30 o successivo: "
+            "aprilo una volta, premi 'Avvia fotocamera virtuale', approva l'estensione "
+            "di sistema in Impostazioni di Sistema, poi ferma la fotocamera virtuale "
+            "(OBS può restare chiuso). Avvia da AVVIA_LOCALE.command per installare pyvirtualcam."
+        )
+    return (
+        "Webcam virtuale non disponibile. Installa OBS Studio (con il driver "
+        "OBS Virtual Camera) oppure Unity Capture. Se usi OBS Virtual Camera, "
+        "ferma 'Avvia fotocamera virtuale' in OBS. "
+        "Avvia da AVVIA_LOCALE.bat per installare pyvirtualcam."
+    )
 
 
 def open_virtual_camera(args: argparse.Namespace, width: int, height: int):
@@ -167,13 +189,7 @@ def open_virtual_camera(args: argparse.Namespace, width: int, height: int):
             backend=args.virtual_backend, device=args.virtual_device,
         )
     except (ImportError, RuntimeError, OSError, ValueError) as error:
-        message = (
-            "Webcam virtuale non disponibile. Installa OBS Studio (con il driver "
-            "OBS Virtual Camera) oppure Unity Capture. Se usi OBS Virtual Camera, "
-            "ferma 'Avvia fotocamera virtuale' in OBS. "
-            "Avvia da AVVIA_LOCALE.bat per installare pyvirtualcam. "
-            f"Dettaglio: {error}"
-        )
+        message = f"{virtual_camera_help()} Dettaglio: {error}"
         if args.virtual_camera is True or args.virtual_backend or args.virtual_device:
             raise RuntimeError(message) from error
         print(f"[Webcam] {message}\n[Webcam] Proseguo con l'anteprima locale.")
@@ -222,24 +238,53 @@ def download_models(mode: str = "normal") -> None:
             ) from error
 
 
+def camera_backends() -> tuple[int, ...]:
+    """Preferred OpenCV capture backends for the current OS, best first."""
+    system = platform.system()
+    if system == "Windows":
+        return (cv2.CAP_DSHOW, cv2.CAP_ANY)
+    if system == "Darwin":
+        return (cv2.CAP_AVFOUNDATION, cv2.CAP_ANY)
+    return (cv2.CAP_ANY,)
+
+
+def camera_unavailable_message(index: int) -> str:
+    message = f"Webcam {index} non disponibile. Chiudi le altre app oppure prova --camera 1."
+    if platform.system() == "Darwin":
+        message += (
+            " Su macOS consenti l'accesso alla fotocamera all'app da cui avvii lo script "
+            "(Terminale, iTerm, VS Code...) in Impostazioni di Sistema > Privacy e "
+            "sicurezza > Fotocamera, poi riavvia quell'app."
+        )
+    return message
+
+
+def wait_for_first_frame(capture: cv2.VideoCapture, timeout: float = 5.0) -> bool:
+    """macOS cameras often return a few empty frames right after opening."""
+    deadline = time.monotonic() + timeout
+    while True:
+        ok, frame = capture.read()
+        if ok and frame is not None and frame.size:
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.05)
+
+
 def open_camera(index: int, width: int, height: int) -> cv2.VideoCapture:
-    if platform.system() == "Windows":
-        capture = cv2.VideoCapture(index, cv2.CAP_DSHOW)
+    for backend in camera_backends():
+        capture = cv2.VideoCapture(index, backend)
         if not capture.isOpened():
             capture.release()
-            capture = cv2.VideoCapture(index)
-    else:
-        capture = cv2.VideoCapture(index)
+            continue
+        capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        if wait_for_first_frame(capture):
+            return capture
+        capture.release()
 
-    if not capture.isOpened():
-        raise RuntimeError(
-            f"Webcam {index} non disponibile. Chiudi le altre app oppure prova --camera 1."
-        )
-
-    capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-    capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-    return capture
+    raise RuntimeError(camera_unavailable_message(index))
 
 
 def create_tasks(mode: str = "normal") -> tuple[vision.ImageSegmenter, MultiViewGestureRecognizer | MultiViewHandLandmarker]:

@@ -5,10 +5,22 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 
 SOUND_PATH = Path(__file__).resolve().parent / "assets" / "vanish.MP3"
+
+
+def external_player(path: Path) -> list[str] | None:
+    """Command line for a non-blocking MP3 player when pygame is missing."""
+    ffplay = shutil.which("ffplay")
+    if ffplay is not None:
+        return [ffplay, "-nodisp", "-autoexit", "-loglevel", "quiet", "-i", str(path)]
+    afplay = shutil.which("afplay") if sys.platform == "darwin" else None
+    if afplay is not None:  # Built into macOS, plays MP3 natively.
+        return [afplay, str(path)]
+    return None
 
 
 class VanishSound:
@@ -19,12 +31,12 @@ class VanishSound:
 
         os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
         self.process = None
-        self.ffplay = None
+        self.player = None
         try:
             from pygame import mixer
         except ImportError:
-            self.ffplay = shutil.which("ffplay")
-            if self.ffplay is None:
+            self.player = external_player(path)
+            if self.player is None:
                 raise RuntimeError("Per riprodurre vanish.MP3 installa pygame o ffplay.")
             return
 
@@ -40,13 +52,12 @@ class VanishSound:
             raise RuntimeError(f"Impossibile aprire l'audio Naruto: {error}") from error
 
     def play(self) -> None:
-        if self.ffplay is not None:
+        if self.player is not None:
             if self.process is not None and self.process.poll() is None:
                 self.process.terminate()
             try:
                 self.process = subprocess.Popen(
-                    [self.ffplay, "-nodisp", "-autoexit", "-loglevel", "quiet",
-                     "-i", str(self.path)],
+                    self.player,
                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
@@ -59,7 +70,7 @@ class VanishSound:
             raise RuntimeError("Impossibile avviare l'audio Naruto: nessun canale libero.")
 
     def close(self) -> None:
-        if self.ffplay is not None:
+        if self.player is not None:
             if self.process is not None and self.process.poll() is None:
                 self.process.terminate()
             return
