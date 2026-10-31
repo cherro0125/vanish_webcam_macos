@@ -69,7 +69,7 @@ mise exec python@3.12 -- python -m venv .venv-local
 
 - Instalacja trwa kilka minut i wymaga internetu. To jednorazowy krok.
 - Venv zapamiętuje swojego Pythona, więc **do uruchamiania aplikacji mise nie jest już potrzebny**.
-- `requirements.txt` sam wybiera wersje paczek: na Apple Silicon instaluje MediaPipe 1.0.1, a na Intelu MediaPipe 0.10.21 z NumPy 1.x.
+- `requirements.txt` sam wybiera wersje paczek: na Apple Silicon instaluje MediaPipe 1.2.0, a na Intelu MediaPipe 0.10.21 z NumPy 1.x.
 
 ## 5. Pierwsze uruchomienie i dostęp do kamery
 
@@ -231,6 +231,8 @@ mise exec python@3.13 -- python -m venv .venv-local
 | Komunikat lub objaw | Rozwiązanie |
 |---|---|
 | `Webcam 0 non disponibile` | Zamknij inne aplikacje używające kamery, spróbuj `--camera 1`, sprawdź uprawnienia (punkt 5) |
+| Aplikacja pada z `Check failed: service_ Service is unavailable` | Masz MediaPipe 1.0.1 z błędem na Apple Silicon. Zaktualizuj zależności: `git pull`, potem `.venv-local/bin/python -m pip install -r requirements.txt` (instaluje 1.2.0) |
+| Przy pierwszym uruchomieniu `not authorized to capture video` | Kliknij **Pozwól** w oknie macOS. Aplikacja czeka do 30 s. Jeśli okno nie pojawi się, sprawdź uprawnienia (punkt 5) |
 | `Webcam virtuale non disponibile` | Powtórz punkt 6. Wirtualna kamera w OBS musi być **zatrzymana** |
 | Błąd przy `pip install` (brak paczki dla danej wersji) | Masz Pythona spoza obsługiwanego zakresu. Odtwórz venv z 3.12 (punkt 12) |
 | `mise: command not found` | Otwórz nowy Terminal po instalacji. Przy instalatorze `curl` dodaj `~/.local/bin` do `PATH` |
