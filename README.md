@@ -89,6 +89,30 @@ local_app\AVVIA_LOCALE.bat --camera 1 --width 1280 --height 720 --fps 30
 
 To troubleshoot gesture recognition without adding text to the video, pass `--gesture-debug`. Diagnostic information appears only in the terminal.
 
+## Live background
+
+By default, the app takes one photo of the empty room during calibration. That photo replaces you when you vanish, and the video stays frozen on it afterward. If the light changes, the camera moves, or an object is moved, the effect stops matching the room until you press `SPACE`.
+
+`--live-background` keeps updating the background:
+
+- Every part of the room you are not covering is refreshed continuously, so moved objects and light changes appear without recapturing.
+- The area behind you keeps its last seen state. The app applies the room-wide light change it measures on the visible parts, so the patch behind you does not look brighter or darker than the rest of the room.
+- After you vanish, the room stays live. People walking by and changing light are visible, and you stay cut out wherever you move.
+
+`--fill-unseen` turns on `--live-background` and also paints in areas the camera has never seen, using their surroundings. You no longer have to leave the frame at startup: the app starts at once, and moving a little to the side reveals the real background. The painted areas are soft guesses. They look fine on a plain wall and blurry on detailed backgrounds. Press `SPACE` at any time to capture a clean background instead.
+
+```powershell
+local_app\AVVIA_LOCALE.bat --live-background
+local_app\AVVIA_LOCALE.bat --fill-unseen --mode naruto
+```
+
+Limitations:
+
+- The camera must not move. A camera that moves breaks the background in either mode.
+- Anything that changes directly behind you while you stand there is not visible to the camera, so the last seen state is shown.
+- The app removes you but not your shadow or reflection.
+- The silhouette is segmented continuously, even before you vanish, which costs more CPU than the default mode.
+
 ## Visual assets
 
 The [wooden log](assets/substitution_log.png) is an original illustration generated with ImageGen using the supplied image as a visual reference. Smoke is drawn in real time by `naruto_effect.py` so it follows the person's position and scales with the video. We also considered a [CC0 smoke sprite sheet](https://opengameart.org/content/smoke-sprite-sheet), but the procedural animation adapts better to dynamic positioning without an additional asset. No anime frames or assets are included in the project.

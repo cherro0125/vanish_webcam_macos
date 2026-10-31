@@ -25,12 +25,14 @@ try:
         load_log, overlay_log, render_substitution, substitution_anchor,
     )
     from .vanish_sound import SOUND_PATH, VanishSound
+    from .live_background import LiveBackground
 except ImportError:
     from naruto_effect import (
         EFFECT_SECONDS, joined_hands_from_landmarks, landed_log_anchor,
         load_log, overlay_log, render_substitution, substitution_anchor,
     )
     from vanish_sound import SOUND_PATH, VanishSound
+    from live_background import LiveBackground
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -57,6 +59,10 @@ CALIBRATION_SECONDS = 4.0
 BACKGROUND_SAMPLE_SECONDS = 0.55
 VANISH_SECONDS = 3.6
 GESTURE_INTERVAL_SECONDS = 0.14
+# --live-background: how often the silhouette is re-segmented. Faster while
+# the person must stay hidden, slower while only the background is learned.
+LIVE_MASK_SECONDS_HIDDEN = 0.05
+LIVE_MASK_SECONDS_READY = 0.1
 
 
 @dataclass
@@ -101,6 +107,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--mode", choices=("normal", "naruto"),
         help="Salta il menu iniziale e avvia direttamente la modalità scelta",
+    )
+    parser.add_argument(
+        "--live-background", action="store_true",
+        help="Aggiorna lo sfondo di continuo dove non sei inquadrato: segue luce e "
+             "oggetti spostati e, dopo la sparizione, mostra la stanza dal vivo",
+    )
+    parser.add_argument(
+        "--fill-unseen", action="store_true",
+        help="Con --live-background: ricostruisce le zone di sfondo mai viste "
+             "(inpainting), così non serve uscire dall'inquadratura all'avvio. "
+             "Attiva anche --live-background",
     )
     parser.add_argument(
         "--gesture-debug", action="store_true",
@@ -379,9 +396,12 @@ def person_mask(
     if not result.confidence_masks:
         return np.zeros((height, width), dtype=np.float32)
     raw = np.squeeze(result.confidence_masks[0].numpy_view()).astype(np.float32)
-    resized = cv2.resize(raw, (width, height), interpolation=cv2.INTER_LINEAR)
-    resized = cv2.GaussianBlur(resized, (0, 0), sigmaX=2.2, sigmaY=2.2)
-    return np.clip((resized - 0.12) / 0.68, 0.0, 1.0)
+    if raw.shape != (height, width):
+        raw = cv2.resize(raw, (width, height), interpolation=cv2.INTER_LINEAR)
+    resized = cv2.GaussianBlur(raw, (0, 0), sigmaX=2.2, sigmaY=2.2)
+    resized -= 0.12
+    resized /= 0.68
+    return np.clip(resized, 0.0, 1.0, out=resized)
 
 
 def alpha_composite(person: np.ndarray, background: np.ndarray, alpha: np.ndarray) -> np.ndarray:
@@ -727,6 +747,10 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str) -> int
     )
     if state.fullscreen:
         set_fullscreen(True)
+    fill_unseen = getattr(args, "fill_unseen", False)
+    live = None
+    if getattr(args, "live_background", False) or fill_unseen:
+        live = LiveBackground(fill_unseen=fill_unseen)
 
     background: np.ndarray | None = None
     background_samples: list[np.ndarray] = []
@@ -737,12 +761,20 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str) -> int
     log_anchor: tuple[int, int, int] | None = None
     log_cache: dict[int, np.ndarray] = {}
     vanished_frame: np.ndarray | None = None
+    live_cover: np.ndarray | None = None
     virtual_camera = None
     virtual_camera_initialized = False
     calibration_remaining = None
     last_gesture_report = 0.0
     started = time.perf_counter()
-    print("[Webcam] Esci dall'inquadratura per 4 secondi: acquisisco lo sfondo.")
+    if fill_unseen:
+        state.phase = "ready"
+        print("[Webcam] Sfondo dal vivo: muoviti un po' per mostrare la stanza dietro di te; "
+              "le zone mai viste vengono ricostruite. SPAZIO acquisisce uno sfondo pulito.")
+    else:
+        print("[Webcam] Esci dall'inquadratura per 4 secondi: acquisisco lo sfondo.")
+    if live is not None and not fill_unseen:
+        print("[Webcam] Sfondo dal vivo attivo: luce e oggetti spostati vengono aggiornati da soli.")
     print("[Webcam] Comandi nella finestra: SPAZIO nuovo sfondo, R riappari, V svanisci, F fullscreen, Q esci.")
 
     try:
@@ -766,6 +798,21 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str) -> int
 
             elapsed_ms = int((now - started) * 1000)
             mp_image = None
+            plate = None
+
+            if live is not None and state.phase != "calibrating":
+                if background is None:  # --fill-unseen: start without a clean plate.
+                    background = camera_frame.copy()
+                interval = (LIVE_MASK_SECONDS_READY if state.phase == "ready"
+                            else LIVE_MASK_SECONDS_HIDDEN)
+                if last_mask is None or live_cover is None or now - last_mask_at >= interval:
+                    rgb = cv2.cvtColor(camera_frame, cv2.COLOR_BGR2RGB)
+                    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+                    last_mask = person_mask(segmenter, mp_image, elapsed_ms, width, height)
+                    last_mask_at = now
+                    live_cover = live.update(camera_frame, last_mask)
+                if state.phase != "ready":
+                    plate = live.compose(camera_frame, live_cover)
 
             if state.phase == "calibrating":
                 elapsed = now - state.calibration_started
@@ -782,6 +829,8 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str) -> int
                     else:
                         background = camera_frame.copy()
                     background_samples.clear()
+                    if live is not None:
+                        live.seed(background)
                     state.phase = "ready"
                     print("[Webcam] Sfondo pronto. Puoi rientrare nell'inquadratura.")
                 display = camera_frame
@@ -790,6 +839,13 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str) -> int
                 state.phase = "calibrating"
                 state.calibration_started = now
                 display = camera_frame
+
+            elif state.phase == "vanished" and plate is not None:
+                # Live room, person still cut out wherever they move.
+                display = plate
+                if mode == "naruto" and log_anchor is not None:
+                    overlay_log(display, log_sprite, landed_log_anchor(log_anchor, height),
+                                cache=log_cache)
 
             elif state.phase == "vanished":
                 if vanished_frame is None:
@@ -807,8 +863,9 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str) -> int
                     (0.08 if mode == "naruto" else GESTURE_INTERVAL_SECONDS)
                 ):
                     state.last_gesture_check = now
-                    rgb = cv2.cvtColor(camera_frame, cv2.COLOR_BGR2RGB)
-                    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+                    if mp_image is None:
+                        rgb = cv2.cvtColor(camera_frame, cv2.COLOR_BGR2RGB)
+                        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
                     if mode == "normal":
                         name, score = recognize_gesture(recognizer, mp_image, elapsed_ms)
                         if args.gesture_debug and now - last_gesture_report >= 1.0:
@@ -828,6 +885,9 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str) -> int
                         if start_naruto_on_join(state, joined, time.perf_counter()):
                             vanish_sound.play()
 
+                if live is not None and plate is None and state.phase != "ready":
+                    plate = live.compose(camera_frame, live_cover)  # Gesture fired this frame.
+
                 if state.phase in ("vanishing", "naruto_vanishing"):
                     # Normal dissolve tracks the silhouette at 20 Hz; Naruto
                     # needs it only while the person is still visible.
@@ -835,20 +895,23 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str) -> int
                         (mode == "normal" and (mask is None or now - last_mask_at >= 0.05))
                         or (mode == "naruto" and (log_anchor is None or now - state.vanish_started < 0.13))
                     )
-                    if needs_mask:
+                    if needs_mask and live is None:
                         if mp_image is None:
                             rgb = cv2.cvtColor(camera_frame, cv2.COLOR_BGR2RGB)
                             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
                         mask = person_mask(segmenter, mp_image, elapsed_ms, width, height)
                         last_mask = mask
                         last_mask_at = now
+                    if live is not None:
+                        mask = last_mask
                     if mode == "naruto" and log_anchor is None:
                         log_anchor = substitution_anchor(mask)
 
                 if mode == "naruto" and state.phase == "naruto_vanishing":
                     age = max(0.04, time.perf_counter() - state.vanish_started)
                     display = render_substitution(
-                        camera_frame, background, mask, log_sprite, log_anchor, age, log_cache
+                        camera_frame, background if plate is None else plate,
+                        mask, log_sprite, log_anchor, age, log_cache,
                     )
                     if age >= EFFECT_SECONDS:
                         state.phase = "vanished"
@@ -864,7 +927,8 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str) -> int
                         if progress >= 1.0:
                             state.phase = "vanished"
                     display = apply_dissolve(
-                        camera_frame, background, mask, progress, dissolve_field, sparkle_noise
+                        camera_frame, background if plate is None else plate,
+                        mask, progress, dissolve_field, sparkle_noise,
                     )
                     if state.phase == "vanished":
                         vanished_frame = display
