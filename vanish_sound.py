@@ -26,7 +26,7 @@ def external_player(path: Path) -> list[str] | None:
 class VanishSound:
     def __init__(self, path: Path = SOUND_PATH):
         if not path.is_file():
-            raise RuntimeError(f"Audio Naruto non trovato: {path}")
+            raise RuntimeError(f"Naruto sound not found: {path}")
         self.path = path
 
         os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
@@ -37,7 +37,7 @@ class VanishSound:
         except ImportError:
             self.player = external_player(path)
             if self.player is None:
-                raise RuntimeError("Per riprodurre vanish.MP3 installa pygame o ffplay.")
+                raise RuntimeError("To play vanish.MP3, install pygame or ffplay.")
             return
 
         self.mixer = mixer
@@ -49,7 +49,7 @@ class VanishSound:
         except Exception as error:
             if self.owns_mixer:
                 mixer.quit()
-            raise RuntimeError(f"Impossibile aprire l'audio Naruto: {error}") from error
+            raise RuntimeError(f"Could not open the Naruto sound: {error}") from error
 
     def play(self) -> None:
         if self.player is not None:
@@ -63,11 +63,11 @@ class VanishSound:
                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
                 )
             except OSError as error:
-                raise RuntimeError(f"Impossibile avviare l'audio Naruto: {error}") from error
+                raise RuntimeError(f"Could not play the Naruto sound: {error}") from error
             return
         self.sound.stop()
         if self.sound.play() is None:
-            raise RuntimeError("Impossibile avviare l'audio Naruto: nessun canale libero.")
+            raise RuntimeError("Could not play the Naruto sound: no free audio channel.")
 
     def close(self) -> None:
         if self.player is not None:

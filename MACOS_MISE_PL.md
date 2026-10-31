@@ -69,7 +69,7 @@ mise exec python@3.12 -- python -m venv .venv-local
 
 - Instalacja trwa kilka minut i wymaga internetu. To jednorazowy krok.
 - Venv zapamiętuje swojego Pythona, więc **do uruchamiania aplikacji mise nie jest już potrzebny**.
-- `requirements.txt` sam wybiera wersje paczek: na Apple Silicon instaluje MediaPipe 1.0.1, a na Intelu MediaPipe 0.10.21 z NumPy 1.x.
+- `requirements.txt` sam wybiera wersje paczek: na Apple Silicon instaluje MediaPipe 1.2.0, a na Intelu MediaPipe 0.10.21 z NumPy 1.x.
 
 ## 5. Pierwsze uruchomienie i dostęp do kamery
 
@@ -84,7 +84,7 @@ mise exec python@3.12 -- python -m venv .venv-local
 5. **Wyjdź z kadru na 4 sekundy.** Terminal powie, kiedy wrócić.
 6. Zniknij gestem: **znak V** (palec wskazujący i środkowy) w trybie Normal albo **złączone dłonie** w trybie Naruto. Możesz też nacisnąć `V`.
 
-> Komunikaty w terminalu są po włosku: *„Esci dall'inquadratura”* znaczy „wyjdź z kadru”, a *„Puoi rientrare”* znaczy „możesz wrócić”.
+> Komunikaty w terminalu są po angielsku, np. *„Step out of the frame”* znaczy „wyjdź z kadru”, a *„You can step back into the frame”* znaczy „możesz wrócić”.
 
 **Skrót (opcjonalnie).** Dopisz do `~/.zshrc` alias z pełną ścieżką do projektu:
 
@@ -103,7 +103,7 @@ Ten krok jest potrzebny tylko wtedy, gdy efekt ma być widoczny jako kamera w Zo
 3. Gdy macOS zapyta, zezwól na rozszerzenie systemowe OBS w Ustawieniach systemowych.
 4. Kliknij **Stop Virtual Camera** i zamknij OBS.
 
-**OBS nie musi być potem uruchomiony.** VanishCam sam wysyła obraz do „OBS Virtual Camera”, a terminal wypisuje wtedy `Uscita virtuale attiva`. Bez tej konfiguracji aplikacja działa dalej z samym oknem podglądu.
+**OBS nie musi być potem uruchomiony.** VanishCam sam wysyła obraz do „OBS Virtual Camera”, a terminal wypisuje wtedy `Virtual camera output active`. Bez tej konfiguracji aplikacja działa dalej z samym oknem podglądu.
 
 ## 7. Tryby tła
 
@@ -207,7 +207,7 @@ Klawisze działają, gdy okno podglądu jest aktywne:
 ## 11. Zoom, Meet, Teams
 
 - **Z OBS (punkt 6):** w ustawieniach wideo aplikacji do rozmów wybierz kamerę **OBS Virtual Camera**. Jeśli jej nie widać, zrestartuj tę aplikację albo przeglądarkę.
-- **Bez OBS:** uruchom z `--no-virtual-camera` i w rozmowie udostępnij okno **Webcam - Anteprima**. Rozmówcy zobaczą je jako udostępniony ekran, a nie kamerę.
+- **Bez OBS:** uruchom z `--no-virtual-camera` i w rozmowie udostępnij okno **Webcam - Preview**. Rozmówcy zobaczą je jako udostępniony ekran, a nie kamerę.
 
 ## 12. Aktualizacja
 
@@ -230,8 +230,10 @@ mise exec python@3.13 -- python -m venv .venv-local
 
 | Komunikat lub objaw | Rozwiązanie |
 |---|---|
-| `Webcam 0 non disponibile` | Zamknij inne aplikacje używające kamery, spróbuj `--camera 1`, sprawdź uprawnienia (punkt 5) |
-| `Webcam virtuale non disponibile` | Powtórz punkt 6. Wirtualna kamera w OBS musi być **zatrzymana** |
+| `Webcam 0 not available` | Zamknij inne aplikacje używające kamery, spróbuj `--camera 1`, sprawdź uprawnienia (punkt 5) |
+| Aplikacja pada z `Check failed: service_ Service is unavailable` | Masz MediaPipe 1.0.1 z błędem na Apple Silicon. Zaktualizuj zależności: `git pull`, potem `.venv-local/bin/python -m pip install -r requirements.txt` (instaluje 1.2.0) |
+| Przy pierwszym uruchomieniu `not authorized to capture video` | Kliknij **Pozwól** w oknie macOS. Aplikacja czeka do 30 s. Jeśli okno nie pojawi się, sprawdź uprawnienia (punkt 5) |
+| `Virtual camera not available` | Powtórz punkt 6. Wirtualna kamera w OBS musi być **zatrzymana** |
 | Błąd przy `pip install` (brak paczki dla danej wersji) | Masz Pythona spoza obsługiwanego zakresu. Odtwórz venv z 3.12 (punkt 12) |
 | `mise: command not found` | Otwórz nowy Terminal po instalacji. Przy instalatorze `curl` dodaj `~/.local/bin` do `PATH` |
 | Obrys sylwetki albo „dziura” w miejscu osoby | Kamera się poruszyła albo zmieniło się światło. Naciśnij SPACJĘ, użyj statywu i stałego światła |
