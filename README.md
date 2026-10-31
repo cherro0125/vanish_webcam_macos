@@ -34,7 +34,7 @@ If Finder says the script comes from an unidentified developer, right-click it a
 
 **Virtual camera on macOS:** pyvirtualcam supports only the OBS virtual camera on macOS. Install [OBS Studio](https://obsproject.com/) 30 or later. Open it once, click **Start Virtual Camera**, and approve the system extension in System Settings when prompted. Then stop the virtual camera and quit OBS. VanishCam sends its output to **OBS Virtual Camera** while OBS is closed. Unity Capture is Windows-only.
 
-Without OBS, use `AVVIA_OBS.command` (preview window only) and share the **Webcam - Anteprima** window in Zoom, Meet, or Teams.
+Without OBS, use `AVVIA_OBS.command` (preview window only) and share the **Webcam - Preview** window in Zoom, Meet, or Teams.
 
 If `pygame` is not installed, the Naruto sound falls back to `ffplay` or to the built-in macOS `afplay`.
 
@@ -65,7 +65,7 @@ local_app\AVVIA_LOCALE.bat --mode goku
 
 If [OBS Studio](https://obsproject.com/) is installed, the app automatically tries to open **OBS Virtual Camera**. The terminal shows the device name. Use `AVVIA_VIRTUAL.bat` to require a virtual camera. Select **OBS Virtual Camera** in the app that will receive the video. OBS's virtual camera must be stopped while this app is producing its output.
 
-To use the effect in an OBS scene, run `AVVIA_OBS.bat`, add a **Window Capture** source, select **Webcam - Anteprima**, and then start the virtual camera from OBS. Alternatively, use [Unity Capture](https://github.com/schellingb/UnityCapture) as a separate virtual video source:
+To use the effect in an OBS scene, run `AVVIA_OBS.bat`, add a **Window Capture** source, select **Webcam - Preview**, and then start the virtual camera from OBS. Alternatively, use [Unity Capture](https://github.com/schellingb/UnityCapture) as a separate virtual video source:
 
 ```powershell
 local_app\AVVIA_VIRTUAL.bat --virtual-backend unitycapture

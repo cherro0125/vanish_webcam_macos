@@ -54,7 +54,7 @@ class CameraBackendTests(unittest.TestCase):
                                               side_effect=lambda *a: fake_capture(opened=False)))
             mocks.enter_context(patch.object(app, "CAMERA_PERMISSION_WAIT_SECONDS", 0.0))
             mocks.enter_context(patch("builtins.print"))
-            with self.assertRaisesRegex(RuntimeError, "Privacy e sicurezza"):
+            with self.assertRaisesRegex(RuntimeError, "Privacy & Security"):
                 app.open_camera(0, 640, 480)
 
     def test_macos_retries_while_permission_dialog_is_open(self):

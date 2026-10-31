@@ -1,4 +1,4 @@
-"""Webcam locale: dissolvenza avviata dal gesto con indice e medio a V."""
+"""Local webcam: vanish effects triggered by a V sign (index and middle finger) or joined palms."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ except ImportError:
 
 APP_DIR = Path(__file__).resolve().parent
 MODEL_DIR = APP_DIR / "models"
-WINDOW_NAME = "Webcam - Anteprima"
+WINDOW_NAME = "Webcam - Preview"
 
 SEGMENTER_MODEL = MODEL_DIR / "selfie_segmenter_landscape.tflite"
 GESTURE_MODEL = MODEL_DIR / "gesture_recognizer.task"
@@ -79,51 +79,51 @@ class AppState:
 def positive_fps(value: str) -> float:
     fps = float(value)
     if not np.isfinite(fps) or not 1 <= fps <= 120:
-        raise argparse.ArgumentTypeError("Gli FPS devono essere compresi tra 1 e 120.")
+        raise argparse.ArgumentTypeError("FPS must be between 1 and 120.")
     return fps
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Scegli Normal Vanish o Naruto Vanish per la webcam."
+        description="Webcam vanish effects: Normal Vanish or Naruto Vanish."
     )
-    parser.add_argument("--camera", type=int, default=0, help="Indice della webcam")
-    parser.add_argument("--width", type=int, default=960, help="Larghezza video")
-    parser.add_argument("--height", type=int, default=540, help="Altezza video")
+    parser.add_argument("--camera", type=int, default=0, help="Webcam index")
+    parser.add_argument("--width", type=int, default=960, help="Video width")
+    parser.add_argument("--height", type=int, default=540, help="Video height")
     parser.add_argument(
-        "--fullscreen", action="store_true", help="Avvia a schermo intero"
+        "--fullscreen", action="store_true", help="Start in fullscreen"
     )
     parser.add_argument(
-        "--no-mirror", action="store_true", help="Non specchiare la webcam"
+        "--no-mirror", action="store_true", help="Do not mirror the webcam"
     )
-    parser.add_argument("--fps", type=positive_fps, default=30.0, help="FPS massimi dell'uscita virtuale (default: 30)")
+    parser.add_argument("--fps", type=positive_fps, default=30.0, help="Maximum FPS of the virtual camera output (default: 30)")
     parser.add_argument(
         "--virtual-camera", action=argparse.BooleanOptionalAction, default=None,
-        help="Richiede la webcam virtuale; per default si attiva se disponibile. --no-virtual-camera la disattiva",
+        help="Require the virtual camera; by default it is used when available. --no-virtual-camera turns it off",
     )
     parser.add_argument(
         "--virtual-backend", choices=("obs", "unitycapture", "v4l2loopback"),
-        help="Driver della webcam virtuale da usare",
+        help="Virtual camera driver to use",
     )
-    parser.add_argument("--virtual-device", help="Nome del dispositivo virtuale da usare")
+    parser.add_argument("--virtual-device", help="Virtual camera device name to use")
     parser.add_argument(
         "--mode", choices=("normal", "naruto"),
-        help="Salta il menu iniziale e avvia direttamente la modalità scelta",
+        help="Skip the start menu and launch the chosen mode directly",
     )
     parser.add_argument(
         "--live-background", action="store_true",
-        help="Aggiorna lo sfondo di continuo dove non sei inquadrato: segue luce e "
-             "oggetti spostati e, dopo la sparizione, mostra la stanza dal vivo",
+        help="Keep updating the background wherever you are not in the way: follows "
+             "light changes and moved objects, and shows the live room after you vanish",
     )
     parser.add_argument(
         "--fill-unseen", action="store_true",
-        help="Con --live-background: ricostruisce le zone di sfondo mai viste "
-             "(inpainting), così non serve uscire dall'inquadratura all'avvio. "
-             "Attiva anche --live-background",
+        help="Paint in background areas the camera has never seen (inpainting), "
+             "so you do not have to step out of the frame at startup. "
+             "Also turns on --live-background",
     )
     parser.add_argument(
         "--gesture-debug", action="store_true",
-        help="Stampa nel terminale lo stato del riconoscimento (senza scritte nel video)",
+        help="Print gesture recognition status in the terminal (no text on the video)",
     )
     parser.add_argument("--self-test", action="store_true", help=argparse.SUPPRESS)
     return parser.parse_args()
@@ -131,15 +131,15 @@ def parse_args() -> argparse.Namespace:
 
 def choose_mode() -> str | None:
     """Simple keyboard/mouse menu shown before the clean camera feed."""
-    title = "Scegli effetto"
+    title = "Choose effect"
     selected = [None]
     window = np.zeros((420, 700, 3), dtype=np.uint8)
     window[:] = (26, 29, 34)
-    cv2.putText(window, "SCEGLI IL TUO VANISH", (68, 88),
+    cv2.putText(window, "CHOOSE YOUR VANISH", (68, 88),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.85, (236, 239, 242), 2, cv2.LINE_AA)
     buttons = (
-        ("normal", "1  NORMAL VANISH", "Segno a V  /  dissolvenza", 140),
-        ("naruto", "2  NARUTO VANISH", "Mani unite  /  tronco e fumo", 260),
+        ("normal", "1  NORMAL VANISH", "V sign  /  dissolve", 140),
+        ("naruto", "2  NARUTO VANISH", "Palms together  /  log and smoke", 260),
     )
     for mode, heading, detail, top in buttons:
         cv2.rectangle(window, (65, top), (635, top + 94), (48, 54, 62), -1, cv2.LINE_AA)
@@ -183,16 +183,16 @@ def choose_mode() -> str | None:
 def virtual_camera_help() -> str:
     if platform.system() == "Darwin":
         return (
-            "Webcam virtuale non disponibile. Su macOS serve OBS Studio 30 o successivo: "
-            "aprilo una volta, premi 'Avvia fotocamera virtuale', approva l'estensione "
-            "di sistema in Impostazioni di Sistema, poi ferma la fotocamera virtuale "
-            "(OBS può restare chiuso). Avvia da AVVIA_LOCALE.command per installare pyvirtualcam."
+            "Virtual camera not available. On macOS you need OBS Studio 30 or later: "
+            "open it once, click 'Start Virtual Camera', approve the system extension "
+            "in System Settings, then stop the virtual camera (OBS can stay closed). "
+            "Start from AVVIA_LOCALE.command to install pyvirtualcam."
         )
     return (
-        "Webcam virtuale non disponibile. Installa OBS Studio (con il driver "
-        "OBS Virtual Camera) oppure Unity Capture. Se usi OBS Virtual Camera, "
-        "ferma 'Avvia fotocamera virtuale' in OBS. "
-        "Avvia da AVVIA_LOCALE.bat per installare pyvirtualcam."
+        "Virtual camera not available. Install OBS Studio (with the "
+        "OBS Virtual Camera driver) or Unity Capture. If you use OBS Virtual Camera, "
+        "stop 'Start Virtual Camera' in OBS. "
+        "Start from AVVIA_LOCALE.bat to install pyvirtualcam."
     )
 
 
@@ -208,12 +208,12 @@ def open_virtual_camera(args: argparse.Namespace, width: int, height: int):
             backend=args.virtual_backend, device=args.virtual_device,
         )
     except (ImportError, RuntimeError, OSError, ValueError) as error:
-        message = f"{virtual_camera_help()} Dettaglio: {error}"
+        message = f"{virtual_camera_help()} Details: {error}"
         if args.virtual_camera is True or args.virtual_backend or args.virtual_device:
             raise RuntimeError(message) from error
-        print(f"[Webcam] {message}\n[Webcam] Proseguo con l'anteprima locale.")
+        print(f"[Webcam] {message}\n[Webcam] Continuing with the local preview only.")
         return None
-    print(f"[Webcam] Uscita virtuale attiva: {camera.device} ({width}x{height}, {args.fps:g} FPS massimi)")
+    print(f"[Webcam] Virtual camera output active: {camera.device} ({width}x{height}, up to {args.fps:g} FPS)")
     return camera
 
 
@@ -232,7 +232,7 @@ def download_models(mode: str = "normal") -> None:
             continue
 
         temporary = destination.with_suffix(destination.suffix + ".part")
-        print(f"[Vanish Lab] Scarico {destination.name}...")
+        print(f"[Vanish Lab] Downloading {destination.name}...")
         try:
             request = urllib.request.Request(
                 url, headers={"User-Agent": "Vanish-Lab/1.0"}
@@ -252,8 +252,8 @@ def download_models(mode: str = "normal") -> None:
         except (OSError, urllib.error.URLError) as error:
             temporary.unlink(missing_ok=True)
             raise RuntimeError(
-                "Non riesco a scaricare i modelli MediaPipe. "
-                "Controlla la connessione internet e riprova."
+                "Could not download the MediaPipe models. "
+                "Check your internet connection and try again."
             ) from error
 
 
@@ -268,12 +268,12 @@ def camera_backends() -> tuple[int, ...]:
 
 
 def camera_unavailable_message(index: int) -> str:
-    message = f"Webcam {index} non disponibile. Chiudi le altre app oppure prova --camera 1."
+    message = f"Webcam {index} not available. Close other apps using the camera or try --camera 1."
     if platform.system() == "Darwin":
         message += (
-            " Su macOS consenti l'accesso alla fotocamera all'app da cui avvii lo script "
-            "(Terminale, iTerm, VS Code...) in Impostazioni di Sistema > Privacy e "
-            "sicurezza > Fotocamera, poi riavvia quell'app."
+            " On macOS, allow camera access for the app you start the script from "
+            "(Terminal, iTerm, VS Code...) in System Settings > Privacy & Security > "
+            "Camera, then restart that app."
         )
     return message
 
@@ -311,8 +311,8 @@ def open_camera(index: int, width: int, height: int) -> cv2.VideoCapture:
         # On the first run OpenCV only *asks* macOS for camera access and
         # fails at once; keep retrying while the user answers the dialog.
         print(
-            "[Webcam] Se macOS chiede l'accesso alla fotocamera, scegli 'Consenti'. "
-            f"Riprovo per {CAMERA_PERMISSION_WAIT_SECONDS:g} secondi..."
+            "[Webcam] If macOS asks for camera access, click 'Allow'. "
+            f"Retrying for {CAMERA_PERMISSION_WAIT_SECONDS:g} seconds..."
         )
         deadline = time.monotonic() + CAMERA_PERMISSION_WAIT_SECONDS
         while capture is None and time.monotonic() < deadline:
@@ -332,7 +332,7 @@ def create_tasks(mode: str = "normal") -> tuple[vision.ImageSegmenter, MultiView
     )
     if mode == "naruto":
         if not HAND_MODEL.is_file():
-            raise RuntimeError(f"Modello delle mani non trovato: {HAND_MODEL}")
+            raise RuntimeError(f"Hand model not found: {HAND_MODEL}")
         options = vision.HandLandmarkerOptions(
             base_options=python.BaseOptions(model_asset_path=str(HAND_MODEL)),
             running_mode=vision.RunningMode.VIDEO,
@@ -479,7 +479,7 @@ def apply_dissolve(
 
 
 def victory_landmark_score(points: np.ndarray) -> float:
-    """Riconosci indice e medio distesi usando distanze 3D, non l'orientamento."""
+    """Recognize extended index and middle fingers from 3D distances, not orientation."""
     if points.shape != (21, 3) or not np.isfinite(points).all():
         return 0.0
 
@@ -552,7 +552,7 @@ def classify_gesture_result(
 
 
 class MultiViewGestureRecognizer:
-    """Riprova la rilevazione su fotogrammi ruotati senza alterare il tracking."""
+    """Retry detection on rotated frames without disturbing tracking."""
 
     def __init__(self, primary, alternate):
         self.primary = primary
@@ -695,7 +695,7 @@ def recognize_gesture(
 
 
 def start_vanish_on_gesture(state: AppState, name: str, score: float, now: float) -> bool:
-    """Avvia la dissolvenza al primo riconoscimento affidabile della V."""
+    """Start the dissolve on the first reliable V-sign recognition."""
     if state.phase == "ready" and name == "Victory" and score >= 0.62:
         state.phase = "vanishing"
         state.vanish_started = now
@@ -721,7 +721,7 @@ def self_test() -> int:
     required = (SEGMENTER_MODEL, GESTURE_MODEL, HAND_MODEL, SOUND_PATH)
     missing = [path.name for path in required if not path.is_file()]
     if missing:
-        raise RuntimeError(f"Risorse mancanti: {', '.join(missing)}")
+        raise RuntimeError(f"Missing resources: {', '.join(missing)}")
     load_log()
     import pygame.mixer  # The distributed build must contain its MP3 decoder.
     for mode in ("normal", "naruto"):
@@ -730,7 +730,7 @@ def self_test() -> int:
             recognizer.close()
         finally:
             segmenter.close()
-    print("[Webcam] Self-test completato: modelli, asset e audio presenti.")
+    print("[Webcam] Self-test passed: models, assets and audio are present.")
     return 0
 
 
@@ -788,19 +788,19 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str) -> int
     started = time.perf_counter()
     if fill_unseen:
         state.phase = "ready"
-        print("[Webcam] Sfondo dal vivo: muoviti un po' per mostrare la stanza dietro di te; "
-              "le zone mai viste vengono ricostruite. SPAZIO acquisisce uno sfondo pulito.")
+        print("[Webcam] Live background: move around a little to show the room behind you; "
+              "areas never seen are painted in. SPACE captures a clean background.")
     else:
-        print("[Webcam] Esci dall'inquadratura per 4 secondi: acquisisco lo sfondo.")
+        print("[Webcam] Step out of the frame for 4 seconds: capturing the background.")
     if live is not None and not fill_unseen:
-        print("[Webcam] Sfondo dal vivo attivo: luce e oggetti spostati vengono aggiornati da soli.")
-    print("[Webcam] Comandi nella finestra: SPAZIO nuovo sfondo, R riappari, V svanisci, F fullscreen, Q esci.")
+        print("[Webcam] Live background on: light changes and moved objects are updated automatically.")
+    print("[Webcam] Keys in the window: SPACE new background, R reappear, V vanish, F fullscreen, Q quit.")
 
     try:
         while True:
             ok, camera_frame = capture.read()
             if not ok:
-                raise RuntimeError("La webcam ha smesso di restituire immagini.")
+                raise RuntimeError("The webcam stopped returning images.")
 
             if not args.no_mirror:
                 camera_frame = cv2.flip(camera_frame, 1)
@@ -837,7 +837,7 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str) -> int
                 elapsed = now - state.calibration_started
                 remaining = max(0, int(np.ceil(CALIBRATION_SECONDS - elapsed)))
                 if remaining != calibration_remaining:
-                    print(f"[Webcam] Acquisizione sfondo: {remaining} secondi.")
+                    print(f"[Webcam] Capturing background: {remaining} s.")
                     calibration_remaining = remaining
                 if elapsed >= CALIBRATION_SECONDS - BACKGROUND_SAMPLE_SECONDS:
                     background_samples.append(camera_frame.copy())
@@ -851,7 +851,7 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str) -> int
                     if live is not None:
                         live.seed(background)
                     state.phase = "ready"
-                    print("[Webcam] Sfondo pronto. Puoi rientrare nell'inquadratura.")
+                    print("[Webcam] Background ready. You can step back into the frame.")
                 display = camera_frame
 
             elif background is None:
@@ -889,17 +889,17 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str) -> int
                         name, score = recognize_gesture(recognizer, mp_image, elapsed_ms)
                         if args.gesture_debug and now - last_gesture_report >= 1.0:
                             print(
-                                f"[Gesto] {name}, valore={score:.2f}, "
-                                f"ritaglio={recognizer.preferred_crop or 'full'}, "
-                                f"rotazione={recognizer.preferred_rotation or 0}"
+                                f"[Gesture] {name}, score={score:.2f}, "
+                                f"crop={recognizer.preferred_crop or 'full'}, "
+                                f"rotation={recognizer.preferred_rotation or 0}"
                             )
                             last_gesture_report = now
                         start_vanish_on_gesture(state, name, score, now)
                     else:
                         joined = recognizer.recognize_joined_hands(mp_image, elapsed_ms)
                         if args.gesture_debug and now - last_gesture_report >= 1.0:
-                            print(f"[Mani] rilevate={recognizer.last_hand_count}, "
-                                  f"unite={joined}, vista={recognizer.preferred_view or 'full'}")
+                            print(f"[Hands] detected={recognizer.last_hand_count}, "
+                                  f"joined={joined}, view={recognizer.preferred_view or 'full'}")
                             last_gesture_report = now
                         if start_naruto_on_join(state, joined, time.perf_counter()):
                             vanish_sound.play()
@@ -969,7 +969,7 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str) -> int
                 vanished_frame = None
                 background_samples.clear()
                 calibration_remaining = None
-                print("[Webcam] Esci dall'inquadratura per 4 secondi: acquisisco il nuovo sfondo.")
+                print("[Webcam] Step out of the frame for 4 seconds: capturing the new background.")
             elif key == ord("r"):
                 if background is not None:
                     state.phase = "ready"
@@ -1002,7 +1002,7 @@ def main() -> int:
     except KeyboardInterrupt:
         return 0
     except Exception as error:
-        print(f"\n[Vanish Lab] ERRORE: {error}", file=sys.stderr)
+        print(f"\n[Vanish Lab] ERROR: {error}", file=sys.stderr)
         return 1
 
 
