@@ -1,5 +1,6 @@
-# Windows, Linux and Apple Silicon Macs.
-mediapipe==1.0.1; sys_platform != "darwin" or platform_machine != "x86_64"
+# Windows, Linux and Apple Silicon Macs. MediaPipe 1.0.1 aborts on Apple Silicon
+# (Metal "Service is unavailable" in hand/face detection, mediapipe#6356); 1.1.0+ is fixed.
+mediapipe==1.2.0; sys_platform != "darwin" or platform_machine != "x86_64"
 opencv-contrib-python>=4.14,<6; sys_platform != "darwin" or platform_machine != "x86_64"
 numpy>=2.0,<3; sys_platform != "darwin" or platform_machine != "x86_64"
 # Intel Macs: newer MediaPipe releases ship Apple Silicon wheels only.

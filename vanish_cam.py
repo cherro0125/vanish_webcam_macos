@@ -59,6 +59,8 @@ CALIBRATION_SECONDS = 4.0
 BACKGROUND_SAMPLE_SECONDS = 0.55
 VANISH_SECONDS = 3.6
 GESTURE_INTERVAL_SECONDS = 0.14
+# macOS: how long to keep retrying while the camera permission dialog is open.
+CAMERA_PERMISSION_WAIT_SECONDS = 30.0
 # --live-background: how often the silhouette is re-segmented. Faster while
 # the person must stay hidden, slower while only the background is learned.
 LIVE_MASK_SECONDS_HIDDEN = 0.05
@@ -288,7 +290,7 @@ def wait_for_first_frame(capture: cv2.VideoCapture, timeout: float = 5.0) -> boo
         time.sleep(0.05)
 
 
-def open_camera(index: int, width: int, height: int) -> cv2.VideoCapture:
+def try_open_camera(index: int, width: int, height: int) -> cv2.VideoCapture | None:
     for backend in camera_backends():
         capture = cv2.VideoCapture(index, backend)
         if not capture.isOpened():
@@ -300,8 +302,25 @@ def open_camera(index: int, width: int, height: int) -> cv2.VideoCapture:
         if wait_for_first_frame(capture):
             return capture
         capture.release()
+    return None
 
-    raise RuntimeError(camera_unavailable_message(index))
+
+def open_camera(index: int, width: int, height: int) -> cv2.VideoCapture:
+    capture = try_open_camera(index, width, height)
+    if capture is None and platform.system() == "Darwin":
+        # On the first run OpenCV only *asks* macOS for camera access and
+        # fails at once; keep retrying while the user answers the dialog.
+        print(
+            "[Webcam] Se macOS chiede l'accesso alla fotocamera, scegli 'Consenti'. "
+            f"Riprovo per {CAMERA_PERMISSION_WAIT_SECONDS:g} secondi..."
+        )
+        deadline = time.monotonic() + CAMERA_PERMISSION_WAIT_SECONDS
+        while capture is None and time.monotonic() < deadline:
+            time.sleep(1.0)
+            capture = try_open_camera(index, width, height)
+    if capture is None:
+        raise RuntimeError(camera_unavailable_message(index))
+    return capture
 
 
 def create_tasks(mode: str = "normal") -> tuple[vision.ImageSegmenter, MultiViewGestureRecognizer | MultiViewHandLandmarker]:

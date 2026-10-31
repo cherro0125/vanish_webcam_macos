@@ -52,8 +52,33 @@ class CameraBackendTests(unittest.TestCase):
             mocks.enter_context(patch.object(app.platform, "system", return_value="Darwin"))
             mocks.enter_context(patch.object(app.cv2, "VideoCapture",
                                               side_effect=lambda *a: fake_capture(opened=False)))
+            mocks.enter_context(patch.object(app, "CAMERA_PERMISSION_WAIT_SECONDS", 0.0))
+            mocks.enter_context(patch("builtins.print"))
             with self.assertRaisesRegex(RuntimeError, "Privacy e sicurezza"):
                 app.open_camera(0, 640, 480)
+
+    def test_macos_retries_while_permission_dialog_is_open(self):
+        working = Mock()
+        with ExitStack() as mocks:
+            mocks.enter_context(patch.object(app.platform, "system", return_value="Darwin"))
+            attempts = mocks.enter_context(
+                patch.object(app, "try_open_camera", side_effect=[None, None, working])
+            )
+            sleep = mocks.enter_context(patch.object(app.time, "sleep"))
+            mocks.enter_context(patch("builtins.print"))
+            self.assertIs(app.open_camera(0, 640, 480), working)
+        self.assertEqual(attempts.call_count, 3)
+        self.assertEqual(sleep.call_count, 2)
+
+    def test_other_systems_fail_without_waiting(self):
+        with ExitStack() as mocks:
+            mocks.enter_context(patch.object(app.platform, "system", return_value="Windows"))
+            attempts = mocks.enter_context(patch.object(app, "try_open_camera", return_value=None))
+            sleep = mocks.enter_context(patch.object(app.time, "sleep"))
+            with self.assertRaises(RuntimeError):
+                app.open_camera(0, 640, 480)
+        attempts.assert_called_once()
+        sleep.assert_not_called()
 
 
 class MenuVisibilityTests(unittest.TestCase):
