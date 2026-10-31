@@ -101,9 +101,18 @@ By default, the app takes one photo of the empty room during calibration. That p
 
 `--fill-unseen` turns on `--live-background` and also paints in areas the camera has never seen, using their surroundings. You no longer have to leave the frame at startup: the app starts at once, and moving a little to the side reveals the real background. The painted areas are soft guesses. They look fine on a plain wall and blurry on detailed backgrounds. Press `SPACE` at any time to capture a clean background instead.
 
+Windows:
+
 ```powershell
 local_app\AVVIA_LOCALE.bat --live-background
 local_app\AVVIA_LOCALE.bat --fill-unseen --mode naruto
+```
+
+macOS:
+
+```bash
+./AVVIA_LOCALE.command --live-background
+./AVVIA_LOCALE.command --fill-unseen --mode naruto
 ```
 
 Limitations:
